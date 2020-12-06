@@ -1,0 +1,101 @@
+#include<graphics.h>
+#include<conio.h>
+
+const int WINDOW_HEIGHT = 600;  
+const int WINDOW_WIDE = 400;    
+
+class Bricks   
+{
+public:
+    int bricks[12][12];          
+    int count;                       
+    const int x = 10, y = 5;       
+    const int length = WINDOW_WIDE / x; 
+    const int wide = 20;
+
+
+    Bricks()
+    {
+        memset(bricks, 0, sizeof(bricks));
+        count = x*y;                    
+    }
+
+
+    void drawAllbricks()
+    {
+        setfillcolor(YELLOW); 
+        setlinecolor(BLACK);   
+        for (int i = 0; i < y; i++)
+            for (int j = 0; j < x; j++)
+                fillrectangle(j*length, i*wide, (j + 1)*length, (i + 1)*wide);
+    }
+};
+
+class Board      
+{
+public:
+    int x, y;             
+    const int length = 60; 
+    const int wide = 15; 
+
+    Board()
+    {
+        x = WINDOW_WIDE / 2 - length / 2;
+        y = WINDOW_HEIGHT - wide;
+    }
+
+
+    void Move()
+    {
+        int ch;   
+        ch = _getch();
+
+        setfillcolor(BLACK);  
+        solidrectangle(x, y, x + length, y + wide);
+
+        switch (ch)
+        {
+        case 75:
+        case 'A':
+        case 'a':
+            x -= length / 3;
+            break;
+        case 77:     
+        case 'D':
+        case 'd':
+            x += length / 3;
+            break;
+        }
+ 
+        if (x <= 0) x = 0;
+        if (x >= WINDOW_WIDE - length) x = WINDOW_WIDE - length;
+        setfillcolor(BLUE); 
+        solidrectangle(x, y, x + length, y + wide);
+    }
+};
+
+void Gaming()
+{
+    Bricks brick;         
+    brick.drawAllbricks(); 
+
+    Board board;       
+    setfillcolor(BLUE);   
+    solidrectangle(board.x, board.y, board.x + board.length, board.y + board.wide);                        
+
+    while (1)
+    {
+        if (_kbhit())  
+        {
+            board.Move(); 
+        }
+    }
+}
+
+int main()
+{
+    initgraph(WINDOW_WIDE, WINDOW_HEIGHT);  //初始化窗口
+    Gaming();
+    _getch();
+    return 0;
+}

@@ -1,61 +1,212 @@
 #include<graphics.h>
 #include<conio.h>
 
-const int WINDOW_HEIGHT = 600;  
-const int WINDOW_WIDE = 400;    
+const int WINDOW_HEIGHT = 600;  //定義窗口的高
+const int WINDOW_WIDE = 400;    //定義窗口的寬
 
-class Bricks   
+class Bricks
 {
 public:
-    int bricks[12][12];          
-    int count;                       
-    const int x = 10, y = 5;       
-    const int length = WINDOW_WIDE / x; 
+    int bricks[12][12];                 //用二維數組保存所有磚塊
+    int count;                          //記錄磚塊總數
+    const int x = 10, y = 5;            //確定磚塊有幾排（y）幾列（x）
+    const int length = WINDOW_WIDE / x; //計算每個磚塊的長和寬
     const int wide = 20;
 
-
+    //構造函數
     Bricks()
     {
-        memset(bricks, 0, sizeof(bricks));
-        count = x*y;                    
+        memset(bricks, 0, sizeof(bricks));  //初始化 0表示有磚塊
+        count = x*y;                        //計算磚塊總數
     }
 
-
-    void drawAllbricks()
+    //畫出所有的磚塊
+    void drawallbricks()
     {
-        setfillcolor(YELLOW); 
-        setlinecolor(BLACK);   
+        setfillcolor(YELLOW);   //設置磚塊顏色
+        setlinecolor(BLACK);    //設置邊框顏色
         for (int i = 0; i < y; i++)
             for (int j = 0; j < x; j++)
                 fillrectangle(j*length, i*wide, (j + 1)*length, (i + 1)*wide);
     }
 };
 
-class Board      
+class Board                 //定義木板類
 {
 public:
-    int x, y;             
-    const int length = 60; 
-    const int wide = 15; 
+    int x, y;               //定義板的坐標
+    const int length = 60;  //定義板的長度
+    const int wide = 15;    //定義板的寬度
 
+    //構造函數 將木板的坐標初始化在中心位置
     Board()
     {
         x = WINDOW_WIDE / 2 - length / 2;
         y = WINDOW_HEIGHT - wide;
     }
 
-
+    //木板移動函數
     void Move()
     {
-        int ch;   
+        int ch;         //接受一個鍵值
         ch = _getch();
 
-        setfillcolor(BLACK);  
+        setfillcolor(BLACK);    //將木板當前位置用背景色黑色覆蓋
         solidrectangle(x, y, x + length, y + wide);
 
         switch (ch)
         {
-        case 75:
+        case 75:        //每次左移木板長度的1/3
+        case 'A':
+        case 'a':
+            x -= length / 3;
+            break;
+        case 77:        //每次右移木板長度的1/3
+        case 'D':
+        case 'd':
+            x += length / 3;
+            break;
+        }
+        //木板左右移動的邊界限制
+        if (x <= 0) x = 0;
+        if (x >= WINDOW_WIDE - length) x = WINDOW_WIDE - length;
+        setfillcolor(BLUE);     //更新坐標後畫新木板
+        solidrectangle(x, y, x + length, y + wide);
+    }
+};
+
+class Ball
+{
+public:
+    const int r = 8;        //定義球的半徑
+    const int speed = 1;    //定義球的飛行速度
+    int ballx, bally;       //定義球的坐標
+    int addx, addy;         //表示球的飛行方向
+
+    //設置兩個個標誌量
+    bool go;            //小球是否發射
+    bool iscatch;       //木板是否捕捉到了小球
+
+    //構造函數  使小球初始化時位於木板中心上
+    Ball(int board_wide)
+    {
+        ballx = WINDOW_WIDE / 2;
+        bally = WINDOW_HEIGHT - board_wide - r - 1;
+        //初始時小球向右上發射
+        addx = 1;
+        addy = -1;
+
+        go = 0;         //初始化狀態 小球未發射出去
+        iscatch = 1;    //初始化狀態 球被木板接住
+    };
+
+    //小球移動函數
+    void Move(Bricks &brick, Board &board)
+    {
+        BeginBatchDraw();       //開啓批量畫圖模式
+
+        //處理邊界：左，右，上邊界要反彈
+        if (ballx >= WINDOW_WIDE - r || ballx <= r) { addx *= -1; }
+        if (bally <= r) { addy *= -1; }
+        //若小球觸及下邊界 說明木板板沒有接住小球
+        if (bally >= WINDOW_HEIGHT - r) { iscatch = 0; return; }
+        //判斷小球和木板的碰撞（小球發射出去後才能判斷 即go = 1）
+        if (go&&ballx + 1 >= board.x - r&&ballx - 1 <= board.x + board.length + r&&bally + 1 >= board.y - r)
+        {
+            go = 0;                             //小球未發射
+            if (bally + 1 <= board.y)           //接住了 小球反向
+                addy *= -1;
+            else if (bally < WINDOW_HEIGHT - r) //這裡是對小球碰撞到木板左右側面的情況進行處理
+            {
+                addx *= -1;
+                addy *= -1;
+            }
+        }
+        int flag = 0;   //表示未小球擊中任一磚塊
+        for (int i = 0; i < brick.y && !flag; i++)
+        {
+            for (int j = 0; j < brick.x && !flag; j++)
+            {
+                //此處有磚塊 且小球在該磚塊的碰撞範圍內
+                if (brick.bricks[i][j] == 0 && ballx + 1 >= j*brick.length - r&&ballx - 1 <= (j + 1)*brick.length + r&&bally + 1 >= i*brick.wide - r&&bally - 1 <= (i + 1)*brick.wide + r)
+                {
+                    //左右兩邊
+                    if (bally + 1 > i*brick.wide - r&&bally - 1 < (i + 1)*brick.wide)
+                        addx *= -1;
+                    //上下兩邊
+                    else if (ballx + 1 >= j*brick.length && ballx - 1 <= (j + 1)*brick.length)
+                        addy *= -1;
+                    //四個頂角處
+                    else
+                        continue;
+                    brick.bricks[i][j] = 1; //此處磚塊被打掉了
+                    brick.count--;          //磚塊數減一
+                    flag = 1;               //擊中了 不用繼續遍歷
+                    setfillcolor(BLACK);    //將擊中的磚塊用黑色覆蓋掉
+                    fillrectangle(j*brick.length, i*brick.wide, (j + 1)*brick.length, (i + 1)*brick.wide);
+                }
+            }//
+        }//for
+        setfillcolor(BLACK);    //擦除小球當前位置
+        solidcircle(ballx, bally, r);
+        ballx += addx*speed;    //更新位置
+        bally += addy*speed;
+        if (bally + 1 < board.y - r)
+            go = 1;             //小球成功發射
+        setfillcolor(RED);      //在新位置畫小球
+        solidcircle(ballx, bally, r);
+
+        FlushBatchDraw();       //把之前所有的繪圖內容顯示出來
+        Sleep(3);               //休眠，就是暫停,使小球慢慢地運動
+    }
+};
+
+int Gaming()
+{
+    Bricks brick;
+    brick.drawallbricks();
+
+    Board board;
+    setfillcolor(BLUE);
+    solidrectangle(board.x, board.y, board.x + board.length, board.y + board.wide);
+
+    Ball ball(board.wide);
+    setfillcolor(RED);
+    solidcircle(ball.ballx, ball.bally, ball.r);
+
+    while (1)
+    {
+        //遊戲結束條件
+        if (!ball.iscatch || brick.count == 0)
+        {
+            //本局結束後把當前小球和木板清除掉
+            setfillcolor(BLACK);
+            solidcircle(ball.ballx, ball.bally, ball.r);
+            solidrectangle(board.x, board.y, board.x + board.length, board.y + board.wide);
+
+            if (brick.count > 0)
+                return MessageBox(NULL, L"You Lose!", L"打磚塊", MB_RETRYCANCEL);
+            else if (brick.count == 0)
+                return MessageBox(NULL, L"You Win!", L"打磚塊", MB_RETRYCANCEL);
+        }
+
+        if (_kbhit())   //判斷你是否按下鍵 按下返回1 沒有返回0
+        {
+            board.Move();
+        }
+        ball.Move(brick, board);
+    }
+}
+
+int main()
+{
+    initgraph(WINDOW_WIDE, WINDOW_HEIGHT);  //初始化窗口
+    while (1)
+    {
+        if (Gaming() == IDCANCEL)           //點擊 取消
+            return 0;
+    }
+}
         case 'A':
         case 'a':
             x -= length / 3;
